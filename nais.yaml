@@ -11,6 +11,10 @@ spec:
   image: {{image}}
   port: 11434
   accessPolicy:
+    inbound:
+      rules:
+        - application: reops-felgen
+          namespace: team-researchops
     outbound:
       external:
         - host: registry.ollama.ai
