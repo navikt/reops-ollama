@@ -1,0 +1,34 @@
+apiVersion: nais.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    nais.io/read-only-file-system: "false"
+  name: reops-ollama
+  namespace: team-researchops
+  labels:
+    team: team-researchops
+spec:
+  image: {{image}}
+  port: 1880
+  liveness:
+    path: /api/tags
+    initialDelay: 20
+    port: 1880
+  readiness:
+    path: /api/tags
+    initialDelay: 20
+    port: 1880
+  resources:
+    limits:
+      cpu: 500m
+      memory: 500Mi
+    requests:
+      cpu: 100m
+      memory: 100Mi
+  replicas:
+    min: 1
+    max: 2
+    cpuThresholdPercentage: 80
+  ingresses:
+    - "https://ollama.ansatt.nav.no"
+    - "https://ollama.intern.nav.no"
