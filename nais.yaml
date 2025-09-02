@@ -9,7 +9,7 @@ metadata:
     team: team-researchops
 spec:
   image: {{image}}
-  port: 8080
+  port: 11434
   accessPolicy:
     outbound:
       external:
@@ -22,11 +22,11 @@ spec:
   liveness:
     path: /api/tags
     initialDelay: 20
-    port: 8080
+    port: 11434
   readiness:
     path: /api/tags
     initialDelay: 20
-    port: 8080
+    port: 11434
   resources:
     limits:
       cpu: 500m
