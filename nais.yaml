@@ -30,11 +30,11 @@ spec:
             - port: 443
   liveness:
     path: /api/tags
-    initialDelay: 20
+    initialDelay: 60
     port: 11434
   readiness:
     path: /api/tags
-    initialDelay: 20
+    initialDelay: 60
     port: 11434
   resources:
     limits:
