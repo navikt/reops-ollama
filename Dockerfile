@@ -2,7 +2,7 @@
 #  CPU‑only Ollama image (plain)
 # ---------------------------------
 
-FROM ubuntu:22.0
+FROM ubuntu:22.04
 
 USER root
 
