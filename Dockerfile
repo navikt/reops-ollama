@@ -14,7 +14,7 @@ RUN apt-get update && \
 
 ENV OLLAMA_ALLOW_ROOT=true
 ENV OLLAMA_HOST=0.0.0.0
-ENV OLLAMA_PORT=11434
+ENV OLLAMA_PORT=8080
 ENV OLLAMA_HOME=/data
 ENV HOME=/data
 ENV MODEL_NAME=llama2:7b
@@ -24,7 +24,7 @@ RUN curl -fsSL https://ollama.com/install.sh | bash
 RUN mkdir -p /data && chmod 777 /data
 
 VOLUME /data
-EXPOSE 11434
+EXPOSE 8080
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]

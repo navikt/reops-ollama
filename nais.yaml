@@ -9,15 +9,15 @@ metadata:
     team: team-researchops
 spec:
   image: {{image}}
-  port: 11434
+  port: 8080
   liveness:
     path: /api/tags
     initialDelay: 20
-    port: 11434
+    port: 8080
   readiness:
     path: /api/tags
     initialDelay: 20
-    port: 11434
+    port: 8080
   resources:
     limits:
       cpu: 500m

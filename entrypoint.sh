@@ -16,7 +16,7 @@ ollama serve &
 OLLAMA_PID=$!
 
 # Wait for Ollama server to be ready
-until curl -fsS http://localhost:11434/api/tags > /dev/null; do
+until curl -fsS http://localhost:8080/api/tags > /dev/null; do
 	echo "Waiting for Ollama server to start..."
 	sleep 2
 done
