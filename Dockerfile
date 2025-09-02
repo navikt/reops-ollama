@@ -20,7 +20,7 @@ ENV MODEL_NAME=llama2:7b
 
 RUN curl -fsSL https://ollama.com/install.sh | bash
 
-RUN mkdir -p ${OLLAMA_HOME}
+RUN mkdir -p ${OLLAMA_HOME} && chmod 777 ${OLLAMA_HOME}
 
 VOLUME /tmp/.ollama
 EXPOSE 11434
