@@ -12,11 +12,6 @@ chmod 777 "$OLLAMA_HOME" 2>/dev/null || echo "Warning: Could not change permissi
 ollama serve --home "$OLLAMA_HOME" &
 OLLAMA_PID=$!
 
-# Wait for server to be ready
-until curl -fsS http://localhost:11434/api/tags > /dev/null; do
-	echo "Waiting for Ollama server to start..."
-	sleep 2
-done
 
 # Pull the model with --home
 ollama pull "$MODEL_NAME" --home "$OLLAMA_HOME"
