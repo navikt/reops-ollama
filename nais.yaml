@@ -13,11 +13,11 @@ spec:
   liveness:
     path: /api/tags
     initialDelay: 20
-    port: 1880
+    port: 11434
   readiness:
     path: /api/tags
     initialDelay: 20
-    port: 1880
+    port: 11434
   resources:
     limits:
       cpu: 500m
