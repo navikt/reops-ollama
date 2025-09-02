@@ -19,7 +19,7 @@ spec:
         - host: ollama.com
           ports:
             - port: 443
-        - host: cloudflarestorage.com
+        - host: "*.cloudflarestorage.com"
           ports:
             - port: 443
   liveness:
