@@ -19,6 +19,9 @@ spec:
         - host: ollama.com
           ports:
             - port: 443
+        - host: cloudflarestorage.com
+          ports:
+            - port: 443
   liveness:
     path: /api/tags
     initialDelay: 20
