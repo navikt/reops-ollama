@@ -9,7 +9,7 @@ metadata:
     team: team-researchops
 spec:
   image: {{image}}
-  port: 1880
+  port: 11434
   liveness:
     path: /api/tags
     initialDelay: 20
