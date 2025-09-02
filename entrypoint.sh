@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+# Ensure OLLAMA_HOME is set and directory exists
+export OLLAMA_HOME="/tmp/.ollama"
+mkdir -p "$OLLAMA_HOME"
+chmod 777 "$OLLAMA_HOME"
+
 # Start Ollama server in the background
 ollama serve &
 OLLAMA_PID=$!
