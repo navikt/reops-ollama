@@ -20,10 +20,10 @@ ENV MODEL_NAME=llama2:7b
 
 RUN curl -fsSL https://ollama.com/install.sh | bash
 
-RUN mkdir -p ${OLLAMA_HOME} && \
-    ollama pull ${MODEL_NAME}
+RUN mkdir -p ${OLLAMA_HOME}
 
 VOLUME /tmp/.ollama
-
 EXPOSE 11434
-CMD ["ollama", "serve"]
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
