@@ -16,13 +16,14 @@ ENV OLLAMA_ALLOW_ROOT=true
 ENV OLLAMA_HOST=0.0.0.0
 ENV OLLAMA_PORT=11434
 ENV OLLAMA_HOME=/data
+ENV HOME=/data
 ENV MODEL_NAME=llama2:7b
 
 RUN curl -fsSL https://ollama.com/install.sh | bash
 
 RUN mkdir -p /data && chmod 777 /data
 
-VOLUME /tmp/.ollama
+VOLUME /data
 EXPOSE 11434
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

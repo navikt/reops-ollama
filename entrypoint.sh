@@ -4,7 +4,9 @@ set -e
 
 # Ensure OLLAMA_HOME is set and directory exists
 export OLLAMA_HOME="/data"
+export HOME="/data"
 mkdir -p "$OLLAMA_HOME"
+mkdir -p "$HOME/.ollama"
 # Try to set permissions, ignore error if not permitted
 chmod 777 "$OLLAMA_HOME" 2>/dev/null || echo "Warning: Could not change permissions for $OLLAMA_HOME"
 
