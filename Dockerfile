@@ -22,16 +22,24 @@ ENV MODEL_NAME=llama3.2:3b
 
 RUN curl -fsSL https://ollama.com/install.sh | bash
 
+# Pull the model at build time so the final (distroless) image already contains it.
+# Start Ollama in the background, wait for it to be ready, pull the model, then stop it.
+RUN mkdir -p /tmp && \
+    OLLAMA_ALLOW_ROOT=true OLLAMA_HOME=/tmp HOME=/tmp ollama serve & \
+    OLLAMA_PID=$! && \
+    until curl -fsS http://localhost:11434/api/tags > /dev/null; do sleep 1; done && \
+    OLLAMA_ALLOW_ROOT=true OLLAMA_HOME=/tmp HOME=/tmp ollama pull "$MODEL_NAME" && \
+    kill "$OLLAMA_PID" || true && wait "$OLLAMA_PID" 2>/dev/null || true
+
 # Stage 2: Copy to Distroless
 FROM gcr.io/distroless/cc:latest
 
 # Copy Ollama binaries and necessary files
 COPY --from=builder /usr/local/bin/ollama /usr/local/bin/ollama
 COPY --from=builder /tmp /tmp
-COPY --from=builder /entrypoint.sh /entrypoint.sh
-
-# Set permissions (if needed, but Distroless has limited tools)
-# Note: Distroless lacks chmod; ensure entrypoint.sh is executable in builder stage
+# We do NOT copy the shell entrypoint into the Distroless image because
+# Distroless does not include a shell (bash/sh). Instead we run the
+# Ollama binary directly as the container's entrypoint.
 
 ENV OLLAMA_ALLOW_ROOT=true
 ENV OLLAMA_HOST=0.0.0.0
@@ -43,4 +51,4 @@ ENV MODEL_NAME=llama3.2:3b
 VOLUME /tmp
 EXPOSE 11434
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/ollama","serve"]
