@@ -22,7 +22,7 @@ until curl -fsS http://localhost:11434/api/tags > /dev/null; do
 done
 
 # Pull the models
-MODELS=("codegemma:2b" "tinyllama:1.1b")
+MODELS=("smollm2:1.7b" "tinyllama:1.1b" "phi:2.7b")
 for model in "${MODELS[@]}"; do
     ollama pull "$model"
 done
