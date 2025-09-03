@@ -31,7 +31,7 @@ spec:
           ports:
             - port: 443
   liveness:
-    path: /api/tags
+    path: /api/version
     initialDelay: 60
     port: 11434
   readiness:
