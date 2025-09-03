@@ -31,11 +31,12 @@ RUN mkdir -p /var/lib/ollama && chown root:root /var/lib/ollama && \
     kill "$OLLAMA_PID" || true && wait "$OLLAMA_PID" 2>/dev/null || true
 
 # Build Rust entrypoint binary
+COPY cmd/entrypoint /cmd/entrypoint
 RUN apt-get update && apt-get install -y --no-install-recommends curl build-essential && \
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
-    export PATH="$HOME/.cargo/bin:$PATH" && \
-    cd /cmd/entrypoint && cargo build --release && \
-    cp target/release/entrypoint /entrypoint
+    /var/lib/ollama/.cargo/bin/cargo --version && \
+    /var/lib/ollama/.cargo/bin/cargo build --manifest-path /cmd/entrypoint/Cargo.toml --release && \
+    cp /cmd/entrypoint/target/release/entrypoint /entrypoint
 
 # -----------------------------------------------------------------------------
 # Default production runtime (distroless)
