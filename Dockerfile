@@ -34,7 +34,7 @@ RUN mkdir -p /var/lib/ollama && chown root:root /var/lib/ollama && \
 RUN apt-get update && apt-get install -y --no-install-recommends curl build-essential && \
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
     export PATH="$HOME/.cargo/bin:$PATH" && \
-    cd cmd/entrypoint && cargo build --release && \
+    cd /cmd/entrypoint && cargo build --release && \
     cp target/release/entrypoint /entrypoint
 
 # -----------------------------------------------------------------------------
