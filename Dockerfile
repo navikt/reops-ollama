@@ -30,14 +30,21 @@ RUN mkdir -p /var/lib/ollama && chown root:root /var/lib/ollama && \
     OLLAMA_ALLOW_ROOT=true OLLAMA_HOME=/var/lib/ollama HOME=/var/lib/ollama ollama pull "$MODEL_NAME" && \
     kill "$OLLAMA_PID" || true && wait "$OLLAMA_PID" 2>/dev/null || true
 
+# Build Rust entrypoint binary
+RUN apt-get update && apt-get install -y --no-install-recommends rustc cargo && rm -rf /var/lib/apt/lists/*
+COPY cmd/entrypoint ./cmd/entrypoint
+RUN cd cmd/entrypoint && cargo build --release
+RUN cp cmd/entrypoint/target/release/entrypoint /entrypoint
+
 # -----------------------------------------------------------------------------
 # Default production runtime (distroless)
 # -----------------------------------------------------------------------------
 FROM gcr.io/distroless/cc:latest
 
-# Copy Ollama binary and the pre-pulled model to /tmp/.ollama (writable at runtime)
+# Copy Ollama binary, pre-pulled model, and Rust entrypoint
 COPY --from=builder /usr/local/bin/ollama /usr/local/bin/ollama
 COPY --from=builder /var/lib/ollama/.ollama /tmp/.ollama
+COPY --from=builder /entrypoint /entrypoint
 
 ENV OLLAMA_ALLOW_ROOT=true
 ENV OLLAMA_HOST=0.0.0.0
@@ -49,4 +56,4 @@ ENV MODEL_NAME=llama3.2:3b
 VOLUME /tmp
 EXPOSE 11434
 
-ENTRYPOINT ["/usr/local/bin/ollama", "serve"]
+ENTRYPOINT ["/entrypoint"]
