@@ -12,6 +12,9 @@ RUN apt-get update && \
 
 RUN curl -fsSL https://ollama.com/install.sh | bash
 
+COPY entrypoint.sh /tmp/entrypoint.sh
+RUN chmod +x /tmp/entrypoint.sh
+
 FROM gcr.io/distroless/base:debug
 
 ENV OLLAMA_ALLOW_ROOT=true
@@ -23,9 +26,8 @@ ENV MODEL_NAME=llama3.2:3b
 
 COPY --from=builder /usr/local/bin/ollama /usr/local/bin/ollama
 COPY --from=builder /usr/local/lib/ollama /usr/local/lib/ollama
+COPY --from=builder /tmp/entrypoint.sh /entrypoint.sh
 
 VOLUME /data
 EXPOSE 11434
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
