@@ -1,17 +1,16 @@
 # ---------------------------------
-#  CPU‑only Ollama image (Alpine-based)
+#  CPU‑only Ollama image (plain)
 # ---------------------------------
 
-FROM alpine:latest
+FROM ubuntu:22.04
 
 USER root
 
-RUN apk add --no-cache \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
         ca-certificates \
-        curl \
-        bash \
-        libstdc++ \
-        libc6-compat
+        curl && \
+    rm -rf /var/lib/apt/lists/*
 
 ENV OLLAMA_ALLOW_ROOT=true
 ENV OLLAMA_HOST=0.0.0.0
@@ -20,16 +19,7 @@ ENV OLLAMA_HOME=/tmp
 ENV HOME=/tmp
 ENV MODEL_NAME=llama3.2:3b
 
-# Download pre-built Ollama binary for Linux
-RUN ARCH=$(uname -m) && \
-    case "$ARCH" in \
-        x86_64) ARCH="amd64" ;; \
-        aarch64|arm64) ARCH="arm64" ;; \
-        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
-    esac && \
-    OLLAMA_VERSION=$(curl -s https://api.github.com/repos/ollama/ollama/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/') && \
-    curl -fsSL "https://github.com/ollama/ollama/releases/download/${OLLAMA_VERSION}/ollama-linux-${ARCH}.tgz" | tar -xz -C /usr/local/bin && \
-    chmod +x /usr/local/bin/ollama
+RUN curl -fsSL https://ollama.com/install.sh | bash
 
 RUN mkdir -p /tmp && chmod 777 /tmp
 
