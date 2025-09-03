@@ -9,7 +9,9 @@ USER root
 RUN apk add --no-cache \
         ca-certificates \
         curl \
-        bash
+        bash \
+        libstdc++ \
+        libc6-compat
 
 ENV OLLAMA_ALLOW_ROOT=true
 ENV OLLAMA_HOST=0.0.0.0
@@ -26,7 +28,8 @@ RUN ARCH=$(uname -m) && \
         *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
     esac && \
     OLLAMA_VERSION=$(curl -s https://api.github.com/repos/ollama/ollama/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/') && \
-    curl -fsSL "https://github.com/ollama/ollama/releases/download/${OLLAMA_VERSION}/ollama-${OLLAMA_VERSION}-linux-${ARCH}.tar.gz" | tar -xz -C /usr/local/bin
+    curl -fsSL "https://github.com/ollama/ollama/releases/download/${OLLAMA_VERSION}/ollama-linux-${ARCH}.tgz" | tar -xz -C /usr/local/bin && \
+    chmod +x /usr/local/bin/ollama
 
 RUN mkdir -p /tmp && chmod 777 /tmp
 
