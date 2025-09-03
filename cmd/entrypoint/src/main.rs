@@ -21,10 +21,9 @@ fn main() {
         .expect("Failed to start ollama serve");
 
     // Wait for server to be ready
-    let client = reqwest::blocking::Client::new();
     loop {
-        if let Ok(resp) = client.get("http://localhost:11434/api/tags").send() {
-            if resp.status().is_success() {
+        if let Ok(resp) = ureq::get("http://localhost:11434/api/tags").call() {
+            if resp.status() == 200 {
                 break;
             }
         }
