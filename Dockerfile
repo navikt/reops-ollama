@@ -1,55 +1,15 @@
 # ---------------------------------
-#  CPU‑only Ollama image (distroless)
+#  CPU‑only Ollama image (Alpine-based)
 # ---------------------------------
 
-# Stage 1: Install Ollama on Ubuntu and pre-pull model
-FROM ubuntu:22.04 AS ollama-builder
+FROM alpine:latest
 
 USER root
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+RUN apk add --no-cache \
         ca-certificates \
-        curl && \
-    rm -rf /var/lib/apt/lists/*
-
-ENV OLLAMA_ALLOW_ROOT=true
-ENV OLLAMA_HOST=0.0.0.0
-ENV OLLAMA_PORT=11434
-ENV OLLAMA_HOME=/var/lib/ollama
-ENV HOME=/var/lib/ollama
-ENV MODEL_NAME=llama3.2:3b
-
-RUN curl -fsSL https://ollama.com/install.sh | bash
-
-# Pull the model at build time and ensure it's in /var/lib/ollama/.ollama
-RUN mkdir -p /var/lib/ollama && chown root:root /var/lib/ollama
-
-# Stage 2: Build Rust entrypoint using the official Rust image (more reliable)
-FROM rust:1.82-slim AS rust-builder
-
-WORKDIR /work
-
-# Install small set of native deps needed by some crates (openssl etc.)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libssl-dev pkg-config ca-certificates && rm -rf /var/lib/apt/lists/*
-
-# Copy only entrypoint crate and build
-COPY cmd/entrypoint /work/cmd/entrypoint
-RUN cd /work/cmd/entrypoint && \
-    cargo build --manifest-path Cargo.toml --release
-
-# -----------------------------------------------------------------------------
-# Default production runtime (distroless)
-# -----------------------------------------------------------------------------
-FROM gcr.io/distroless/cc:latest
-
-# Copy Ollama binary, pre-pulled model, and Rust entrypoint
-COPY --from=ollama-builder /usr/local/bin/ollama /usr/local/bin/ollama
-# Note: models are pulled at container start by the entrypoint. We don't copy
-# pre-pulled models into the image to keep the image small and avoid fragile
-# build-time server runs. If you prefer pre-pulling, re-add the copy here.
-COPY --from=rust-builder /work/cmd/entrypoint/target/release/entrypoint /entrypoint
+        curl \
+        bash
 
 ENV OLLAMA_ALLOW_ROOT=true
 ENV OLLAMA_HOST=0.0.0.0
@@ -58,7 +18,20 @@ ENV OLLAMA_HOME=/tmp
 ENV HOME=/tmp
 ENV MODEL_NAME=llama3.2:3b
 
+# Download pre-built Ollama binary for Linux
+RUN ARCH=$(uname -m) && \
+    case "$ARCH" in \
+        x86_64) ARCH="amd64" ;; \
+        aarch64|arm64) ARCH="arm64" ;; \
+        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+    esac && \
+    OLLAMA_VERSION=$(curl -s https://api.github.com/repos/ollama/ollama/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/') && \
+    curl -fsSL "https://github.com/ollama/ollama/releases/download/${OLLAMA_VERSION}/ollama-${OLLAMA_VERSION}-linux-${ARCH}.tar.gz" | tar -xz -C /usr/local/bin
+
+RUN mkdir -p /tmp && chmod 777 /tmp
+
 VOLUME /tmp
 EXPOSE 11434
-
-ENTRYPOINT ["/entrypoint"]
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]

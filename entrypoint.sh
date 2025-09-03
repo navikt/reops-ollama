@@ -21,13 +21,8 @@ until curl -fsS http://localhost:11434/api/tags > /dev/null; do
 	sleep 2
 done
 
-# Only pull the model if it's not already present
-if ! ollama list | grep -q "${MODEL_NAME}"; then
-	echo "Model ${MODEL_NAME} not found, pulling..."
-	ollama pull "$MODEL_NAME"
-else
-	echo "Model ${MODEL_NAME} already present"
-fi
+# Pull the model
+ollama pull "$MODEL_NAME"
 
 # Stop background server
 kill $OLLAMA_PID
