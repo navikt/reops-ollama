@@ -33,17 +33,22 @@ RUN mkdir -p /var/lib/ollama && chown root:root /var/lib/ollama && \
     chmod -R 0777 /var/lib/ollama || true && \
     kill "$OLLAMA_PID" || true && wait "$OLLAMA_PID" 2>/dev/null || true
 
-# Stage 2: Copy to Distroless
+# Build small Go entrypoint binary (static) so final distroless image can run it
+RUN apt-get update && apt-get install -y --no-install-recommends golang-go && rm -rf /var/lib/apt/lists/*
+WORKDIR /go/src/entrypoint
+COPY cmd/entrypoint ./cmd/entrypoint
+WORKDIR /go/src/entrypoint/cmd/entrypoint
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -o /entrypoint ./main.go
+
+# -----------------------------------------------------------------------------
+# Default production runtime (distroless) using the Go entrypoint
+# -----------------------------------------------------------------------------
 FROM gcr.io/distroless/cc:latest
 
-# Copy Ollama binaries and necessary files
+# Copy Ollama binary and pre-pulled model metadata (if any) and the Go entrypoint
 COPY --from=builder /usr/local/bin/ollama /usr/local/bin/ollama
-# Copy pre-pulled model files into the runtime-writable folder (/tmp).
-# Copy the .ollama directory explicitly to ensure dotfiles/directories are preserved.
 COPY --from=builder /var/lib/ollama/.ollama /tmp/.ollama
-# We do NOT copy the shell entrypoint into the Distroless image because
-# Distroless does not include a shell (bash/sh). Instead we run the
-# Ollama binary directly as the container's entrypoint.
+COPY --from=builder /entrypoint /entrypoint
 
 ENV OLLAMA_ALLOW_ROOT=true
 ENV OLLAMA_HOST=0.0.0.0
@@ -55,26 +60,4 @@ ENV MODEL_NAME=llama3.2:3b
 VOLUME /tmp
 EXPOSE 11434
 
-ENTRYPOINT ["/usr/local/bin/ollama","serve"]
-
-## Optional dev final image (includes bash and entrypoint for runtime pulls)
-FROM ubuntu:22.04 AS dev
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl bash && rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /usr/local/bin/ollama /usr/local/bin/ollama
-COPY --from=builder /var/lib/ollama/.ollama /tmp/.ollama
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-ENV OLLAMA_ALLOW_ROOT=true
-ENV OLLAMA_HOST=0.0.0.0
-ENV OLLAMA_PORT=11434
-ENV OLLAMA_HOME=/tmp
-ENV HOME=/tmp
-
-VOLUME /tmp
-EXPOSE 11434
-
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/entrypoint"]
