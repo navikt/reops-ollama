@@ -2,8 +2,8 @@
 #  CPU‑only Ollama image (distroless)
 # ---------------------------------
 
-# Stage 1: Install Ollama on Ubuntu
-FROM ubuntu:22.04 AS builder
+# Stage 1: Install Ollama on Ubuntu and pre-pull model
+FROM ubuntu:22.04 AS ollama-builder
 
 USER root
 
@@ -30,13 +30,19 @@ RUN mkdir -p /var/lib/ollama && chown root:root /var/lib/ollama && \
     OLLAMA_ALLOW_ROOT=true OLLAMA_HOME=/var/lib/ollama HOME=/var/lib/ollama ollama pull "$MODEL_NAME" && \
     kill "$OLLAMA_PID" || true && wait "$OLLAMA_PID" 2>/dev/null || true
 
-# Build Rust entrypoint binary
-COPY cmd/entrypoint /cmd/entrypoint
-RUN apt-get update && apt-get install -y --no-install-recommends curl build-essential && \
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
-    /var/lib/ollama/.cargo/bin/cargo --version && \
-    /var/lib/ollama/.cargo/bin/cargo build --manifest-path /cmd/entrypoint/Cargo.toml --release && \
-    cp /cmd/entrypoint/target/release/entrypoint /entrypoint
+# Stage 2: Build Rust entrypoint using the official Rust image (more reliable)
+FROM rust:1.72-slim AS rust-builder
+
+WORKDIR /work
+
+# Install small set of native deps needed by some crates (openssl etc.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libssl-dev pkg-config ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Copy only entrypoint crate and build
+COPY cmd/entrypoint /work/cmd/entrypoint
+RUN cd /work/cmd/entrypoint && \
+    cargo build --manifest-path Cargo.toml --release
 
 # -----------------------------------------------------------------------------
 # Default production runtime (distroless)
@@ -44,9 +50,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl build-esse
 FROM gcr.io/distroless/cc:latest
 
 # Copy Ollama binary, pre-pulled model, and Rust entrypoint
-COPY --from=builder /usr/local/bin/ollama /usr/local/bin/ollama
-COPY --from=builder /var/lib/ollama/.ollama /tmp/.ollama
-COPY --from=builder /entrypoint /entrypoint
+COPY --from=ollama-builder /usr/local/bin/ollama /usr/local/bin/ollama
+COPY --from=ollama-builder /var/lib/ollama/.ollama /tmp/.ollama
+COPY --from=rust-builder /work/cmd/entrypoint/target/release/entrypoint /entrypoint
 
 ENV OLLAMA_ALLOW_ROOT=true
 ENV OLLAMA_HOST=0.0.0.0
