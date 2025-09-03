@@ -17,7 +17,6 @@ ENV OLLAMA_HOST=0.0.0.0
 ENV OLLAMA_PORT=11434
 ENV OLLAMA_HOME=/tmp
 ENV HOME=/tmp
-ENV MODEL_NAME=llama3.2:3b
 
 RUN curl -fsSL https://ollama.com/install.sh | bash
 

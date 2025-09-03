@@ -21,8 +21,11 @@ until curl -fsS http://localhost:11434/api/tags > /dev/null; do
 	sleep 2
 done
 
-# Pull the model
-ollama pull "$MODEL_NAME"
+# Pull the models
+MODELS=("codegemma:2b" "tinyllama:1.1b")
+for model in "${MODELS[@]}"; do
+    ollama pull "$model"
+done
 
 # Stop background server
 kill $OLLAMA_PID
