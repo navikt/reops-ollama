@@ -23,15 +23,10 @@ ENV MODEL_NAME=llama3.2:3b
 RUN curl -fsSL https://ollama.com/install.sh | bash
 
 # Pull the model at build time and ensure it's in /var/lib/ollama/.ollama
-RUN mkdir -p /var/lib/ollama && chown root:root /var/lib/ollama && \
-    OLLAMA_ALLOW_ROOT=true OLLAMA_HOME=/var/lib/ollama HOME=/var/lib/ollama ollama serve & \
-    OLLAMA_PID=$! && \
-    until curl -fsS http://localhost:11434/api/tags > /dev/null; do sleep 1; done && \
-    OLLAMA_ALLOW_ROOT=true OLLAMA_HOME=/var/lib/ollama HOME=/var/lib/ollama ollama pull "$MODEL_NAME" && \
-    kill "$OLLAMA_PID" || true && wait "$OLLAMA_PID" 2>/dev/null || true
+RUN mkdir -p /var/lib/ollama && chown root:root /var/lib/ollama
 
 # Stage 2: Build Rust entrypoint using the official Rust image (more reliable)
-FROM rust:1.72-slim AS rust-builder
+FROM rust:1.82-slim AS rust-builder
 
 WORKDIR /work
 
@@ -51,7 +46,9 @@ FROM gcr.io/distroless/cc:latest
 
 # Copy Ollama binary, pre-pulled model, and Rust entrypoint
 COPY --from=ollama-builder /usr/local/bin/ollama /usr/local/bin/ollama
-COPY --from=ollama-builder /var/lib/ollama/.ollama /tmp/.ollama
+# Note: models are pulled at container start by the entrypoint. We don't copy
+# pre-pulled models into the image to keep the image small and avoid fragile
+# build-time server runs. If you prefer pre-pulling, re-add the copy here.
 COPY --from=rust-builder /work/cmd/entrypoint/target/release/entrypoint /entrypoint
 
 ENV OLLAMA_ALLOW_ROOT=true
