@@ -1,8 +1,10 @@
 # ---------------------------------
-#  CPU‑only Ollama image (distroless)
+#  CPU‑only Ollama image (plain)
 # ---------------------------------
 
-FROM ubuntu:22.04 AS builder
+FROM ubuntu:22.04
+
+USER root
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -10,21 +12,19 @@ RUN apt-get update && \
         curl && \
     rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL https://ollama.com/install.sh | bash
-
-FROM gcr.io/distroless/base:debug
-
 ENV OLLAMA_ALLOW_ROOT=true
 ENV OLLAMA_HOST=0.0.0.0
 ENV OLLAMA_PORT=11434
-ENV OLLAMA_HOME=/data
-ENV HOME=/data
+ENV OLLAMA_HOME=/tmp
+ENV HOME=/tmp
 ENV MODEL_NAME=llama3.2:3b
 
-COPY --from=builder /usr/local/bin/ollama /usr/local/bin/ollama
-COPY --from=builder /usr/local/lib/ollama /usr/local/lib/ollama
-COPY entrypoint.sh /entrypoint.sh
+RUN curl -fsSL https://ollama.com/install.sh | bash
 
-VOLUME /data
+RUN mkdir -p /tmp && chmod 777 /tmp
+
+VOLUME /tmp
 EXPOSE 11434
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
