@@ -20,6 +20,8 @@ ENV HOME=/root
 ENV OLLAMA_KEEP_ALIVE=2m
 ENV OLLAMA_REQUEST_TIMEOUT=120s
 ENV OLLAMA_MAX_LOADED_MODELS=4
+# Point models to the pre-built location (read-only)
+ENV OLLAMA_MODELS=/root/.ollama/models
 
 RUN curl -fsSL https://ollama.com/install.sh | bash
 
@@ -36,6 +38,10 @@ RUN ollama serve & \
     ollama pull qwen2.5-coder:1.5b && \
     kill $OLLAMA_PID && \
     wait $OLLAMA_PID 2>/dev/null || true
+
+# After models are pulled, switch OLLAMA_HOME to /tmp for runtime
+ENV OLLAMA_HOME=/tmp/.ollama
+
 EXPOSE 11434
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

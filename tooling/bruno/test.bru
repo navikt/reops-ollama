@@ -4,12 +4,25 @@ meta {
   seq: 1
 }
 
-get {
-  url: 127.0.0.1:11434
-  body: none
+post {
+  url: 127.0.0.1:11434/api/chat
+  body: json
   auth: inherit
+}
+
+body:json {
+  {
+      "model": "tinyllama:1.1b",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Hello, how are you?"
+        }
+      ]
+    }
 }
 
 settings {
   encodeUrl: true
+  timeout: 0
 }
