@@ -39,7 +39,9 @@ RUN ollama serve & \
     kill $OLLAMA_PID && \
     wait $OLLAMA_PID 2>/dev/null || true
 
-# After models are pulled, switch OLLAMA_HOME to /tmp for runtime
+# Copy models to a location we can reference, then point OLLAMA_MODELS there
+# Keep OLLAMA_HOME separate for runtime data
+ENV OLLAMA_MODELS=/root/.ollama/models
 ENV OLLAMA_HOME=/tmp/.ollama
 
 EXPOSE 11434

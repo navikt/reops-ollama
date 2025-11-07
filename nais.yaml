@@ -5,6 +5,8 @@ metadata:
   namespace: team-researchops
   labels:
     team: team-researchops
+  annotations:
+    nais.io/read-only-file-system: "false"
 spec:
   image: {{image}}
   port: 11434
@@ -48,10 +50,6 @@ spec:
     min: 1
     max: 3
     cpuThresholdPercentage: 80
-  filesFrom:
-    - emptyDir:
-        medium: Memory
-      mountPath: /tmp
   ingresses:
     - "https://ollama.ansatt.nav.no"
     - "https://ollama.intern.nav.no"
