@@ -7,7 +7,8 @@ on:
     - cron: "0 0 * * *"
 
 jobs:
-  digest-update:
+  digestabot:
+    name: digestabot update ${{ github.event.repository.name }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -15,6 +16,20 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v5
+      - uses: nais/login@v0
+        with:
+          project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
+          identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
+          team: team-researchops
+      - run: |
+          echo "DT=$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+          echo "B=$(date '+%Y%m%d-%H%M%S')" >> $GITHUB_ENV
       - uses: navikt/digestabot@3dde00246105f5f36886fdcb8dbb4d2a1ca9738e
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          labels-for-pr: dependencies
+          branch-for-pr: 'update-digests-${{ env.B }}'
+          title-for-pr: 'Update image digests at ${{ env.DT }}'
+          description-for-pr: Automated update of container image digests to latest versions
+          commit-message: 'Update image digests at ${{ env.DT }}  [ci skip]'
+
