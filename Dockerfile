@@ -55,9 +55,10 @@ RUN apk add --no-cache \
     libgcc
 
 # Create ollama user and directories for non-root execution (required for NAIS)
+# Note: NAIS will run as a different UID (e.g., 1069), so we need world-writable permissions
 RUN adduser -D -u 1000 ollama && \
     mkdir -p /home/ollama/.ollama /home/ollama/models && \
-    chown -R ollama:ollama /home/ollama
+    chmod -R 777 /home/ollama
 
 # Copy entrypoint early (better layer caching - code changes won't invalidate model layers)
 COPY entrypoint.sh /entrypoint.sh
