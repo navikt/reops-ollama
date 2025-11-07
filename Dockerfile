@@ -26,15 +26,16 @@ ENV OLLAMA_KEEP_ALIVE=2m
 ENV OLLAMA_REQUEST_TIMEOUT=120s
 ENV OLLAMA_MAX_LOADED_MODELS=4
 ENV OLLAMA_MODELS=/home/ollama/models
+ENV OLLAMA_HOME=/home/ollama/.ollama
 
 # Install Ollama
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
 # Pre-pull models during build (as root, then fix ownership)
-RUN OLLAMA_MODELS=/home/ollama/models ollama serve & \
+RUN ollama serve & \
     OLLAMA_PID=$! && \
     until curl -fsS http://localhost:11434/api/tags > /dev/null 2>&1; do sleep 1; done && \
-    OLLAMA_MODELS=/home/ollama/models ollama pull tinyllama:1.1b && \
+    ollama pull tinyllama:1.1b && \
     # ollama pull smollm2:1.7b && \
     # ollama pull smollm2:360m && \
     # ollama pull starcoder:1b && \
