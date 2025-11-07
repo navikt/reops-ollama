@@ -2,12 +2,52 @@
 # Note: Chainguard's Ollama image is not free (requires paid subscription).
 # Per NAV guidance: use cgr.dev/chainguard/ for images not in NAV's private registry.
 
+# Stage 1: Model downloader
+FROM cgr.dev/chainguard/wolfi-base@sha256:1c3731953120424013499309796bd0084113bad7216dd00820953c2f0f7f7e0b AS model-downloader
+
+USER root
+
+# Install minimal dependencies needed for downloading models
+RUN apk add --no-cache \
+    ca-certificates \
+    curl \
+    libstdc++ \
+    libgcc
+
+# Create directories for models
+RUN mkdir -p /models
+
+# Environment variables for model download
+ENV OLLAMA_MODELS=/models
+
+# Install Ollama
+RUN curl -fsSL https://ollama.com/install.sh | sh
+
+# Download models in parallel (using smallest model for faster builds)
+RUN ollama serve & \
+    OLLAMA_PID=$! && \
+    # Wait for Ollama to be ready with faster polling
+    timeout=30 && elapsed=0 && \
+    until curl -fsS http://localhost:11434/api/tags > /dev/null 2>&1 || [ $elapsed -ge $timeout ]; do \
+        sleep 0.5; elapsed=$((elapsed + 1)); \
+    done && \
+    # Pull the smallest model for faster builds
+    ollama pull smollm2:360m && \
+    # Uncomment additional models as needed:
+    # ollama pull tinyllama:1.1b && \
+    # ollama pull smollm2:1.7b && \
+    # ollama pull starcoder:1b && \
+    # ollama pull deepseek-coder:1.3b && \
+    # ollama pull qwen2.5-coder:1.5b && \
+    kill $OLLAMA_PID && \
+    wait $OLLAMA_PID 2>/dev/null || true
+
+# Stage 2: Final runtime image
 FROM cgr.dev/chainguard/wolfi-base@sha256:1c3731953120424013499309796bd0084113bad7216dd00820953c2f0f7f7e0b
 
 USER root
 
 # Install runtime dependencies for Ollama
-# libstdc++ and libgcc are required for Ollama's C++ dependencies
 RUN apk add --no-cache \
     ca-certificates \
     curl \
@@ -18,6 +58,10 @@ RUN apk add --no-cache \
 RUN adduser -D -u 1000 ollama && \
     mkdir -p /home/ollama/.ollama /home/ollama/models && \
     chown -R ollama:ollama /home/ollama
+
+# Copy entrypoint early (better layer caching - code changes won't invalidate model layers)
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Environment variables for Ollama configuration
 ENV OLLAMA_HOST=0.0.0.0
@@ -31,27 +75,12 @@ ENV OLLAMA_HOME=/home/ollama/.ollama
 # Install Ollama
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
-# Pre-pull models during build (as root, then fix ownership)
-RUN ollama serve & \
-    OLLAMA_PID=$! && \
-    until curl -fsS http://localhost:11434/api/tags > /dev/null 2>&1; do sleep 1; done && \
-    ollama pull tinyllama:1.1b && \
-    # ollama pull smollm2:1.7b && \
-    # ollama pull smollm2:360m && \
-    # ollama pull starcoder:1b && \
-    # ollama pull deepcoder:1.5b && \
-    # ollama pull deepseek-coder:1.3b && \
-    # ollama pull qwen2.5-coder:1.5b && \
-    kill $OLLAMA_PID && \
-    wait $OLLAMA_PID 2>/dev/null || true && \
-    chown -R ollama:ollama /home/ollama
+# Copy pre-downloaded models from the model-downloader stage
+COPY --from=model-downloader --chown=ollama:ollama /models /home/ollama/models
 
 EXPOSE 11434
 
-# Copy entrypoint and switch to non-root user
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
+# Switch to non-root user
 USER ollama
 WORKDIR /home/ollama
 
