@@ -29,20 +29,15 @@ RUN curl -fsSL https://ollama.com/install.sh | bash
 RUN ollama serve & \
     OLLAMA_PID=$! && \
     until curl -fsS http://localhost:11434/api/tags > /dev/null 2>&1; do sleep 1; done && \
-    ollama pull smollm2:1.7b && \
     ollama pull tinyllama:1.1b && \
-    ollama pull smollm2:360m && \
-    ollama pull starcoder:1b && \
-    ollama pull deepcoder:1.5b && \
-    ollama pull deepseek-coder:1.3b && \
-    ollama pull qwen2.5-coder:1.5b && \
+    # ollama pull smollm2:1.7b && \
+    # ollama pull smollm2:360m && \
+    # ollama pull starcoder:1b && \
+    # ollama pull deepcoder:1.5b && \
+    # ollama pull deepseek-coder:1.3b && \
+    # ollama pull qwen2.5-coder:1.5b && \
     kill $OLLAMA_PID && \
     wait $OLLAMA_PID 2>/dev/null || true
-
-# Copy models to a location we can reference, then point OLLAMA_MODELS there
-# Keep OLLAMA_HOME separate for runtime data
-ENV OLLAMA_MODELS=/root/.ollama/models
-ENV OLLAMA_HOME=/tmp/.ollama
 
 EXPOSE 11434
 COPY entrypoint.sh /entrypoint.sh
