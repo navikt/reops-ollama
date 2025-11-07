@@ -20,6 +20,7 @@ jobs:
         id: docker-build-push
         with:
           team: team-researchops
+          dockerfile: Dockerfile.build-from-source
           identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
           project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
           cache_from: type=gha
