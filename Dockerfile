@@ -64,6 +64,7 @@ COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Environment variables for Ollama configuration
+ENV HOME=/home/ollama
 ENV OLLAMA_HOST=0.0.0.0
 ENV OLLAMA_PORT=11434
 ENV OLLAMA_KEEP_ALIVE=2m
