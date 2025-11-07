@@ -1,29 +1,28 @@
-# ---------------------------------
-#  CPU‑only Ollama image (plain)
-# ---------------------------------
+# Using Chainguard's wolfi-base from their free public registry.
+# Note: Chainguard's Ollama image is not free (requires paid subscription).
+# Per NAV guidance: use cgr.dev/chainguard/ for images not in NAV's private registry.
 
-FROM ubuntu:22.04
+FROM cgr.dev/chainguard/wolfi-base@sha256:1c3731953120424013499309796bd0084113bad7216dd00820953c2f0f7f7e0b
 
 USER root
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        ca-certificates \
-        curl && \
-    rm -rf /var/lib/apt/lists/*
+# Install runtime dependencies for Ollama
+# libstdc++ and libgcc are required for Ollama's C++ dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    curl \
+    libstdc++ \
+    libgcc
 
-ENV OLLAMA_ALLOW_ROOT=true
+# Environment variables for Ollama configuration
 ENV OLLAMA_HOST=0.0.0.0
 ENV OLLAMA_PORT=11434
-ENV OLLAMA_HOME=/root/.ollama
-ENV HOME=/root
 ENV OLLAMA_KEEP_ALIVE=2m
 ENV OLLAMA_REQUEST_TIMEOUT=120s
 ENV OLLAMA_MAX_LOADED_MODELS=4
-# Point models to the pre-built location (read-only)
-ENV OLLAMA_MODELS=/root/.ollama/models
 
-RUN curl -fsSL https://ollama.com/install.sh | bash
+# Install Ollama
+RUN curl -fsSL https://ollama.com/install.sh | sh
 
 # Pre-pull models during build
 RUN ollama serve & \
@@ -40,6 +39,7 @@ RUN ollama serve & \
     wait $OLLAMA_PID 2>/dev/null || true
 
 EXPOSE 11434
+
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
