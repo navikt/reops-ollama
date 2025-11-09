@@ -17,19 +17,10 @@ spec:
           namespace: team-researchops
     outbound:
       external:
-        - host: registry.ollama.ai
-          ports:
-            - port: 443
         - host: ollama.com
           ports:
             - port: 443
-        - host: cloudflarestorage.com
-          ports:
-            - port: 443
         - host: dd20bb891979d25aebc8bec07b2b3bbc.r2.cloudflarestorage.com
-          ports:
-            - port: 443
-        - host: r2.cloudflarestorage.com
           ports:
             - port: 443
   liveness:
