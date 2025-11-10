@@ -77,22 +77,40 @@ ENV PATH=/usr/local/bin:$PATH
 ENV OLLAMA_MODELS=/models
 ENV LD_LIBRARY_PATH=/usr/local/lib/ollama
 
-# Download models in parallel (using smallest model for faster builds)
-RUN ollama serve & \
+# Download models with proper wait and error handling
+RUN ollama serve > /tmp/ollama.log 2>&1 & \
     OLLAMA_PID=$! && \
-    # Wait for Ollama to be ready with faster polling
-    timeout=30 && elapsed=0 && \
-    until curl -fsS http://localhost:11434/api/tags > /dev/null 2>&1 || [ $elapsed -ge $timeout ]; do \
-        sleep 0.5; elapsed=$((elapsed + 1)); \
+    echo "Waiting for Ollama to start (PID: $OLLAMA_PID)..." && \
+    # Wait for Ollama to be ready (up to 2 minutes)
+    for i in $(seq 1 120); do \
+        if curl -fsS http://localhost:11434/api/tags > /dev/null 2>&1; then \
+            echo "Ollama is ready!"; \
+            break; \
+        fi; \
+        if [ $i -eq 120 ]; then \
+            echo "Timeout waiting for Ollama"; \
+            cat /tmp/ollama.log; \
+            exit 1; \
+        fi; \
+        sleep 1; \
     done && \
-    # Pull the smallest model for faster builds
-    ollama pull smollm2:360m && \
-    # Uncomment additional models as needed:
-    # ollama pull tinyllama:1.1b && \
-    # ollama pull smollm2:1.7b && \
-    # ollama pull starcoder:1b && \
-    # ollama pull deepseek-coder:1.3b && \
-    # ollama pull qwen2.5-coder:1.5b && \
+    # Pull models sequentially with 15 minute timeout per pull
+    echo "Pulling tinyllama:1.1b..." && \
+    timeout 900 ollama pull tinyllama:1.1b && \
+    echo "Pulling smollm2:360m..." && \
+    timeout 900 ollama pull smollm2:360m && \
+    echo "Pulling smollm2:1.7b..." && \
+    timeout 900 ollama pull smollm2:1.7b && \
+    echo "Pulling starcoder:1b..." && \
+    timeout 900 ollama pull starcoder:1b && \
+    echo "Pulling deepseek-coder:1.3b..." && \
+    timeout 900 ollama pull deepseek-coder:1.3b && \
+    echo "Pulling qwen2.5-coder:1.5b..." && \
+    timeout 900 ollama pull qwen2.5-coder:1.5b && \
+    echo "All models downloaded successfully!" && \
+    # List downloaded models for verification
+    ollama list && \
+    # Clean shutdown
     kill $OLLAMA_PID && \
     wait $OLLAMA_PID 2>/dev/null || true
 
@@ -109,36 +127,36 @@ RUN apk add --no-cache \
     libgcc
 
 # Create ollama user and directories for non-root execution (required for NAIS)
-# Note: NAIS will run as a different UID (e.g., 1069), so we need world-writable permissions
+# Using /tmp which is writable in restricted environments like NAIS
 RUN adduser -D -u 1000 ollama && \
-    mkdir -p /home/ollama/.ollama /home/ollama/models /usr/local/lib && \
-    chmod -R 777 /home/ollama
+    mkdir -p /tmp/ollama/.ollama /tmp/ollama/models /usr/local/lib && \
+    chmod -R 777 /tmp/ollama
 
 # Copy entrypoint early (better layer caching - code changes won't invalidate model layers)
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Copy our custom-built Ollama binary and libraries (built with patched Go 1.24.4)
+# Copy our custom-built Ollama binary and libraries (built with patched Go 1.25.3)
 COPY --from=ollama-builder /ollama-dist /usr/local/
 
-# Environment variables for Ollama configuration
-ENV HOME=/home/ollama
+# Environment variables for Ollama configuration (using /tmp which is writable)
+ENV HOME=/tmp/ollama
 ENV OLLAMA_HOST=0.0.0.0
 ENV OLLAMA_PORT=11434
 ENV OLLAMA_KEEP_ALIVE=2m
 ENV OLLAMA_REQUEST_TIMEOUT=120s
 ENV OLLAMA_MAX_LOADED_MODELS=4
-ENV OLLAMA_MODELS=/home/ollama/models
-ENV OLLAMA_HOME=/home/ollama/.ollama
+ENV OLLAMA_MODELS=/tmp/ollama/models
+ENV OLLAMA_HOME=/tmp/ollama/.ollama
 ENV LD_LIBRARY_PATH=/usr/local/lib/ollama
 
 # Copy pre-downloaded models from the model-downloader stage
-COPY --from=model-downloader --chown=ollama:ollama /models /home/ollama/models
+COPY --from=model-downloader --chown=ollama:ollama /models /tmp/ollama/models
 
 EXPOSE 11434
 
 # Switch to non-root user
 USER ollama
-WORKDIR /home/ollama
+WORKDIR /tmp/ollama
 
 ENTRYPOINT ["/entrypoint.sh"]
