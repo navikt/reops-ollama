@@ -72,9 +72,6 @@ RUN apk add --no-cache \
     libstdc++ \
     libgcc
 
-# Create ollama user and directories for non-root execution (required for NAIS)
-RUN adduser -D -u 1000 ollama
-
 # Environment variables for Ollama configuration (using /tmp which is writable)
 ENV HOME=/tmp/ollama
 ENV OLLAMA_HOST=0.0.0.0
@@ -86,6 +83,7 @@ ENV OLLAMA_MODELS=/tmp/ollama/models
 ENV OLLAMA_HOME=/tmp/ollama/.ollama
 
 # Create directories with proper permissions in /tmp
+# World-writable (777) to ensure NAIS's default user can write
 RUN mkdir -p /tmp/ollama/.ollama /tmp/ollama/models && \
     chmod -R 777 /tmp/ollama
 
@@ -97,12 +95,12 @@ RUN chmod +x /entrypoint.sh
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
 # Copy pre-downloaded models from the model-downloader stage
-COPY --from=model-downloader --chown=ollama:ollama /models /tmp/ollama/models
+COPY --from=model-downloader /models /tmp/ollama/models
+RUN chmod -R 777 /tmp/ollama/models
 
 EXPOSE 11434
 
-# Switch to non-root user
-USER ollama
+# Don't switch user - let NAIS handle user switching with its default user
 WORKDIR /tmp/ollama
 
 ENTRYPOINT ["/entrypoint.sh"]

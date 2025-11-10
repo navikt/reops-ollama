@@ -126,19 +126,6 @@ RUN apk add --no-cache \
     libstdc++ \
     libgcc
 
-# Create ollama user and directories for non-root execution (required for NAIS)
-# Using /tmp which is writable in restricted environments like NAIS
-RUN adduser -D -u 1000 ollama && \
-    mkdir -p /tmp/ollama/.ollama /tmp/ollama/models /usr/local/lib && \
-    chmod -R 777 /tmp/ollama
-
-# Copy entrypoint early (better layer caching - code changes won't invalidate model layers)
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# Copy our custom-built Ollama binary and libraries (built with patched Go 1.25.3)
-COPY --from=ollama-builder /ollama-dist /usr/local/
-
 # Environment variables for Ollama configuration (using /tmp which is writable)
 ENV HOME=/tmp/ollama
 ENV OLLAMA_HOST=0.0.0.0
@@ -150,13 +137,25 @@ ENV OLLAMA_MODELS=/tmp/ollama/models
 ENV OLLAMA_HOME=/tmp/ollama/.ollama
 ENV LD_LIBRARY_PATH=/usr/local/lib/ollama
 
+# Create directories with proper permissions in /tmp
+# World-writable (777) to ensure NAIS's default user can write
+RUN mkdir -p /tmp/ollama/.ollama /tmp/ollama/models /usr/local/lib && \
+    chmod -R 777 /tmp/ollama
+
+# Copy entrypoint early (better layer caching - code changes won't invalidate model layers)
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Copy our custom-built Ollama binary and libraries (built with patched Go 1.25.3)
+COPY --from=ollama-builder /ollama-dist /usr/local/
+
 # Copy pre-downloaded models from the model-downloader stage
-COPY --from=model-downloader --chown=ollama:ollama /models /tmp/ollama/models
+COPY --from=model-downloader /models /tmp/ollama/models
+RUN chmod -R 777 /tmp/ollama/models
 
 EXPOSE 11434
 
-# Switch to non-root user
-USER ollama
+# Don't switch user - let NAIS handle user switching with its default user
 WORKDIR /tmp/ollama
 
 ENTRYPOINT ["/entrypoint.sh"]
