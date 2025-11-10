@@ -17,9 +17,6 @@ spec:
           namespace: team-researchops
     outbound:
       external:
-        - host: ollama.com
-          ports:
-            - port: 443
         - host: dd20bb891979d25aebc8bec07b2b3bbc.r2.cloudflarestorage.com
           ports:
             - port: 443
