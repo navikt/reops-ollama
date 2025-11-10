@@ -55,35 +55,36 @@ RUN apk add --no-cache \
     libgcc
 
 # Create ollama user and directories for non-root execution (required for NAIS)
-# Note: NAIS will run as a different UID (e.g., 1069), so we need world-writable permissions
-RUN adduser -D -u 1000 ollama && \
-    mkdir -p /home/ollama/.ollama /home/ollama/models && \
-    chmod -R 777 /home/ollama
+RUN adduser -D -u 1000 ollama
 
-# Copy entrypoint early (better layer caching - code changes won't invalidate model layers)
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# Environment variables for Ollama configuration
-ENV HOME=/home/ollama
+# Environment variables for Ollama configuration (using /tmp which is writable)
+ENV HOME=/tmp/ollama
 ENV OLLAMA_HOST=0.0.0.0
 ENV OLLAMA_PORT=11434
 ENV OLLAMA_KEEP_ALIVE=2m
 ENV OLLAMA_REQUEST_TIMEOUT=120s
 ENV OLLAMA_MAX_LOADED_MODELS=4
-ENV OLLAMA_MODELS=/home/ollama/models
-ENV OLLAMA_HOME=/home/ollama/.ollama
+ENV OLLAMA_MODELS=/tmp/ollama/models
+ENV OLLAMA_HOME=/tmp/ollama/.ollama
+
+# Create directories with proper permissions in /tmp
+RUN mkdir -p /tmp/ollama/.ollama /tmp/ollama/models && \
+    chmod -R 777 /tmp/ollama
+
+# Copy entrypoint early (better layer caching - code changes won't invalidate model layers)
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Install Ollama
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
 # Copy pre-downloaded models from the model-downloader stage
-COPY --from=model-downloader --chown=ollama:ollama /models /home/ollama/models
+COPY --from=model-downloader --chown=ollama:ollama /models /tmp/ollama/models
 
 EXPOSE 11434
 
 # Switch to non-root user
 USER ollama
-WORKDIR /home/ollama
+WORKDIR /tmp/ollama
 
 ENTRYPOINT ["/entrypoint.sh"]
