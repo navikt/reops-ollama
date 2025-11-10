@@ -33,12 +33,11 @@ RUN ollama serve & \
     done && \
     # Pull the smallest model for faster builds
     ollama pull smollm2:360m && \
-    # Uncomment additional models as needed:
-    # ollama pull tinyllama:1.1b && \
-    # ollama pull smollm2:1.7b && \
-    # ollama pull starcoder:1b && \
-    # ollama pull deepseek-coder:1.3b && \
-    # ollama pull qwen2.5-coder:1.5b && \
+    ollama pull tinyllama:1.1b && \
+    ollama pull smollm2:1.7b && \
+    ollama pull starcoder:1b && \
+    ollama pull deepseek-coder:1.3b && \
+    ollama pull qwen2.5-coder:1.5b && \
     kill $OLLAMA_PID && \
     wait $OLLAMA_PID 2>/dev/null || true
 
