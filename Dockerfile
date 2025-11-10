@@ -23,23 +23,41 @@ ENV OLLAMA_MODELS=/models
 # Install Ollama
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
-# Download models in parallel (using smallest model for faster builds)
-RUN ollama serve & \
+# Download models with proper wait and error handling
+RUN ollama serve > /tmp/ollama.log 2>&1 & \
     OLLAMA_PID=$! && \
-    # Wait for Ollama to be ready (up to 5 minutes)
-    timeout=300 && elapsed=0 && \
-    until curl -fsS http://localhost:11434/api/tags > /dev/null 2>&1 || [ $elapsed -ge $timeout ]; do \
-        sleep 1; elapsed=$((elapsed + 1)); \
+    echo "Waiting for Ollama to start (PID: $OLLAMA_PID)..." && \
+    # Wait for Ollama to be ready (up to 2 minutes)
+    for i in $(seq 1 120); do \
+        if curl -fsS http://localhost:11434/api/tags > /dev/null 2>&1; then \
+            echo "Ollama is ready!"; \
+            break; \
+        fi; \
+        if [ $i -eq 120 ]; then \
+            echo "Timeout waiting for Ollama"; \
+            cat /tmp/ollama.log; \
+            exit 1; \
+        fi; \
+        sleep 1; \
     done && \
-    # Pull all models sequentially with 15 minute timeout per pull
-    timeout 900 ollama pull tinyllama:1.1b && \
-    timeout 900 ollama pull smollm2:360m && \
-    timeout 900 ollama pull smollm2:1.7b && \
-    timeout 900 ollama pull starcoder:1b && \
-    timeout 900 ollama pull deepseek-coder:1.3b && \
-    timeout 900 ollama pull qwen2.5-coder:1.5b && \
-    sleep 5 && \
-    kill $OLLAMA_PID || true && \
+    # Pull models sequentially with better error handling
+    echo "Pulling tinyllama:1.1b..." && \
+    ollama pull tinyllama:1.1b && \
+    echo "Pulling smollm2:360m..." && \
+    ollama pull smollm2:360m && \
+    echo "Pulling smollm2:1.7b..." && \
+    ollama pull smollm2:1.7b && \
+    echo "Pulling starcoder:1b..." && \
+    ollama pull starcoder:1b && \
+    echo "Pulling deepseek-coder:1.3b..." && \
+    ollama pull deepseek-coder:1.3b && \
+    echo "Pulling qwen2.5-coder:1.5b..." && \
+    ollama pull qwen2.5-coder:1.5b && \
+    echo "All models downloaded successfully!" && \
+    # List downloaded models for verification
+    ollama list && \
+    # Clean shutdown
+    kill $OLLAMA_PID && \
     wait $OLLAMA_PID 2>/dev/null || true
 
 # Stage 2: Final runtime image
