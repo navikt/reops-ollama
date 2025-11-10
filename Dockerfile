@@ -32,8 +32,8 @@ RUN ollama serve & \
         sleep 1; elapsed=$((elapsed + 1)); \
     done && \
     # Pull all models sequentially with 15 minute timeout per pull
-    timeout 900 ollama pull smollm2:360m && \
     timeout 900 ollama pull tinyllama:1.1b && \
+    timeout 900 ollama pull smollm2:360m && \
     timeout 900 ollama pull smollm2:1.7b && \
     timeout 900 ollama pull starcoder:1b && \
     timeout 900 ollama pull deepseek-coder:1.3b && \
