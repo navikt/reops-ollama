@@ -26,19 +26,20 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 # Download models in parallel (using smallest model for faster builds)
 RUN ollama serve & \
     OLLAMA_PID=$! && \
-    # Wait for Ollama to be ready with faster polling
-    timeout=30 && elapsed=0 && \
+    # Wait for Ollama to be ready (up to 5 minutes)
+    timeout=300 && elapsed=0 && \
     until curl -fsS http://localhost:11434/api/tags > /dev/null 2>&1 || [ $elapsed -ge $timeout ]; do \
-        sleep 0.5; elapsed=$((elapsed + 1)); \
+        sleep 1; elapsed=$((elapsed + 1)); \
     done && \
-    # Pull the smallest model for faster builds
-    ollama pull smollm2:360m && \
-    ollama pull tinyllama:1.1b && \
-    ollama pull smollm2:1.7b && \
-    ollama pull starcoder:1b && \
-    ollama pull deepseek-coder:1.3b && \
-    ollama pull qwen2.5-coder:1.5b && \
-    kill $OLLAMA_PID && \
+    # Pull all models sequentially with 15 minute timeout per pull
+    timeout 900 ollama pull smollm2:360m && \
+    timeout 900 ollama pull tinyllama:1.1b && \
+    timeout 900 ollama pull smollm2:1.7b && \
+    timeout 900 ollama pull starcoder:1b && \
+    timeout 900 ollama pull deepseek-coder:1.3b && \
+    timeout 900 ollama pull qwen2.5-coder:1.5b && \
+    sleep 5 && \
+    kill $OLLAMA_PID || true && \
     wait $OLLAMA_PID 2>/dev/null || true
 
 # Stage 2: Final runtime image
