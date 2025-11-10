@@ -15,11 +15,6 @@ spec:
       rules:
         - application: reops-felgen
           namespace: team-researchops
-    outbound:
-      external:
-        - host: dd20bb891979d25aebc8bec07b2b3bbc.r2.cloudflarestorage.com
-          ports:
-            - port: 443
   liveness:
     path: /api/version
     initialDelay: 60
