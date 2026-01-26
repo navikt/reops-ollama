@@ -87,7 +87,11 @@ COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Install Ollama
-RUN curl -fsSL https://ollama.com/install.sh | sh
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl zstd ca-certificates && \
+    curl -fsSL https://ollama.com/install.sh | sh && \
+    apt-get purge -y curl && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy pre-downloaded models from the model-downloader stage
 COPY --from=model-downloader /models /tmp/ollama/models
