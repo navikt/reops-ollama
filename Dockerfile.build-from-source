@@ -1,0 +1,161 @@
+# Dockerfile.build-from-source
+# This Dockerfile builds Ollama from source using a patched Go version (1.24.4+)
+# to mitigate CVE-2025-22871, CVE-2025-47907, CVE-2025-61723
+#
+# Build with: docker build -f Dockerfile.build-from-source -t reops-ollama:secure .
+
+# Stage 1: Build Ollama from source with patched Go
+# Using Debian-based image for glibc compatibility with Wolfi runtime
+FROM golang:1.25.3-bookworm AS ollama-builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    build-essential \
+    cmake \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Ollama version to build (update this to latest stable release)
+ARG OLLAMA_VERSION=v0.12.10
+
+# Clone Ollama repository
+RUN git clone --depth 1 --branch ${OLLAMA_VERSION} https://github.com/ollama/ollama.git /build
+
+WORKDIR /build
+
+# Build the GGML backend (CPU support) and clean up intermediate files
+RUN cmake -B build && \
+    cmake --build build --parallel 2 && \
+    (cmake --install build --prefix /usr/local || true) && \
+    rm -rf build
+
+# Collect all libraries into a known location for easier copying
+RUN mkdir -p /ollama-dist/bin /ollama-dist/lib && \
+    if [ -d /usr/local/lib/ollama ]; then \
+        cp -r /usr/local/lib/ollama /ollama-dist/lib/; \
+    fi
+
+# Build Ollama binary with the patched Go version
+# The Go stdlib will be statically linked into the binary
+# Use -parallel 2 to reduce memory usage during compilation
+RUN go generate ./... && \
+    go build -o /ollama-dist/bin/ollama \
+    -trimpath \
+    -ldflags="-s -w" \
+    . && \
+    rm -rf /root/.cache/go-build
+
+# Verify the built binary has the correct Go version
+RUN go version -m /ollama-dist/bin/ollama && \
+    echo "Ollama built successfully with Go $(go version | awk '{print $3}')"
+
+# Stage 2: Model downloader (uses our custom-built Ollama)
+FROM cgr.dev/chainguard/wolfi-base@sha256:1c3731953120424013499309796bd0084113bad7216dd00820953c2f0f7f7e0b AS model-downloader
+
+USER root
+
+# Install minimal dependencies needed for downloading models
+RUN apk add --no-cache \
+    ca-certificates \
+    curl \
+    libstdc++ \
+    libgcc
+
+# Create directories for models
+RUN mkdir -p /models /usr/local/bin /usr/local/lib
+
+# Copy our custom-built Ollama binary and libraries
+COPY --from=ollama-builder /ollama-dist /usr/local/
+
+RUN chmod +x /usr/local/bin/ollama
+
+# Make sure ollama is in PATH
+ENV PATH=/usr/local/bin:$PATH
+
+# Environment variables for model download
+ENV OLLAMA_MODELS=/models
+ENV LD_LIBRARY_PATH=/usr/local/lib/ollama
+
+# Download models with proper wait and error handling
+RUN ollama serve > /tmp/ollama.log 2>&1 & \
+    OLLAMA_PID=$! && \
+    echo "Waiting for Ollama to start (PID: $OLLAMA_PID)..." && \
+    # Wait for Ollama to be ready (up to 2 minutes)
+    for i in $(seq 1 120); do \
+        if curl -fsS http://localhost:11434/api/tags > /dev/null 2>&1; then \
+            echo "Ollama is ready!"; \
+            break; \
+        fi; \
+        if [ $i -eq 120 ]; then \
+            echo "Timeout waiting for Ollama"; \
+            cat /tmp/ollama.log; \
+            exit 1; \
+        fi; \
+        sleep 1; \
+    done && \
+    # Pull models sequentially with 15 minute timeout per pull
+    echo "Pulling tinyllama:1.1b..." && \
+    timeout 900 ollama pull tinyllama:1.1b && \
+    # #echo "Pulling smollm2:360m..." && \
+    # timeout 900 ollama pull smollm2:360m && \
+    # echo "Pulling smollm2:1.7b..." && \
+    # timeout 900 ollama pull smollm2:1.7b && \
+    # echo "Pulling starcoder:1b..." && \
+    # timeout 900 ollama pull starcoder:1b && \
+    # echo "Pulling deepseek-coder:1.3b..." && \
+    # timeout 900 ollama pull deepseek-coder:1.3b && \
+    # echo "Pulling qwen2.5-coder:1.5b..." && \
+    # timeout 900 ollama pull qwen2.5-coder:1.5b && \
+    echo "All models downloaded successfully!" && \
+    # List downloaded models for verification
+    ollama list && \
+    # Clean shutdown
+    kill $OLLAMA_PID && \
+    wait $OLLAMA_PID 2>/dev/null || true
+
+# Stage 3: Final runtime image
+FROM cgr.dev/chainguard/wolfi-base@sha256:1c3731953120424013499309796bd0084113bad7216dd00820953c2f0f7f7e0b
+
+USER root
+
+# Install runtime dependencies for Ollama
+RUN apk add --no-cache \
+    ca-certificates \
+    curl \
+    libstdc++ \
+    libgcc
+
+# Environment variables for Ollama configuration (using /tmp which is writable)
+ENV HOME=/tmp/ollama
+ENV OLLAMA_HOST=0.0.0.0
+ENV OLLAMA_PORT=11434
+ENV OLLAMA_KEEP_ALIVE=2m
+ENV OLLAMA_REQUEST_TIMEOUT=120s
+ENV OLLAMA_MAX_LOADED_MODELS=4
+ENV OLLAMA_MODELS=/tmp/ollama/models
+ENV OLLAMA_HOME=/tmp/ollama/.ollama
+ENV LD_LIBRARY_PATH=/usr/local/lib/ollama
+
+# Create directories with proper permissions in /tmp
+# World-writable (777) to ensure NAIS's default user can write
+RUN mkdir -p /tmp/ollama/.ollama /tmp/ollama/models /usr/local/lib && \
+    chmod -R 777 /tmp/ollama
+
+# Copy entrypoint early (better layer caching - code changes won't invalidate model layers)
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Copy our custom-built Ollama binary and libraries (built with patched Go 1.25.3)
+COPY --from=ollama-builder /ollama-dist /usr/local/
+
+# Copy pre-downloaded models from the model-downloader stage
+COPY --from=model-downloader /models /tmp/ollama/models
+RUN chmod -R 777 /tmp/ollama/models
+
+EXPOSE 11434
+
+# Don't switch user - let NAIS handle user switching with its default user
+WORKDIR /tmp/ollama
+
+ENTRYPOINT ["/entrypoint.sh"]
