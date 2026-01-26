@@ -1,8 +1,3 @@
-# Using Chainguard's wolfi-base from their free public registry.
-# Note: Chainguard's Ollama image is not free (requires paid subscription).
-# Per NAV guidance: use cgr.dev/chainguard/ for images not in NAV's private registry.
-
-# Stage 1: Model downloader
 FROM cgr.dev/chainguard/wolfi-base@sha256:1c3731953120424013499309796bd0084113bad7216dd00820953c2f0f7f7e0b AS model-downloader
 
 USER root

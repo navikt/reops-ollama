@@ -11,8 +11,7 @@ This repository includes two Dockerfiles:
 
 ### Quick Start
 
-**Build secure image:**
+**Build image:**
 ```bash
-docker build -f Dockerfile.build-from-source -t reops-ollama:secure .
-```
+docker build -t reops-ollama:latest .
 

@@ -15,12 +15,11 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v6
-      - name: 'Build and push'
-        uses: nais/docker-build-push@v0
+      - name: Build and push
         id: docker-build-push
+        uses: nais/docker-build-push@v0
         with:
           team: team-researchops
-          dockerfile: Dockerfile.build-from-source
           identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
           project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
           cache_from: type=gha
