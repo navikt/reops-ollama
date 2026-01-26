@@ -126,7 +126,7 @@ RUN apk add --no-cache \
     libstdc++ \
     libgcc
 
-# Environment variables for Ollama configuration (everything must be /tmp)
+# Environment variables for Ollama configuration (everything must be /tmp at runtime)
 ENV HOME=/tmp
 ENV OLLAMA_HOST=0.0.0.0
 ENV OLLAMA_PORT=11434
@@ -144,8 +144,8 @@ RUN chmod +x /entrypoint.sh
 # Copy our custom-built Ollama binary and libraries (built with patched Go 1.25.3)
 COPY --from=ollama-builder /ollama-dist /usr/local/
 
-# Copy pre-downloaded models from the model-downloader stage directly into /tmp
-COPY --from=model-downloader /models /tmp
+# Copy pre-downloaded models into a non-/tmp location so K8s /tmp mounts won't hide them
+COPY --from=model-downloader /models /baked-models
 
 EXPOSE 11434
 
