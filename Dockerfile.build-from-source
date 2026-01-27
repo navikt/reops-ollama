@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Ollama version to build (update this to latest stable release)
-ARG OLLAMA_VERSION=v0.12.10
+ARG OLLAMA_VERSION=v0.15.2
 
 # Clone Ollama repository
 RUN git clone --depth 1 --branch ${OLLAMA_VERSION} https://github.com/ollama/ollama.git /build
