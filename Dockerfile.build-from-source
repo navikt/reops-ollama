@@ -51,7 +51,7 @@ RUN go version -m /ollama-dist/bin/ollama && \
     echo "Ollama built successfully with Go $(go version | awk '{print $3}')"
 
 # Stage 2: Model downloader (uses our custom-built Ollama)
-FROM cgr.dev/chainguard/wolfi-base@sha256:1c3731953120424013499309796bd0084113bad7216dd00820953c2f0f7f7e0b AS model-downloader
+FROM cgr.dev/chainguard/wolfi-base:latest AS model-downloader
 
 USER root
 
@@ -115,7 +115,7 @@ RUN ollama serve > /tmp/ollama.log 2>&1 & \
     wait $OLLAMA_PID 2>/dev/null || true
 
 # Stage 3: Final runtime image
-FROM cgr.dev/chainguard/wolfi-base@sha256:1c3731953120424013499309796bd0084113bad7216dd00820953c2f0f7f7e0b
+FROM cgr.dev/chainguard/wolfi-base:latest
 
 USER root
 
