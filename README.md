@@ -1,7 +1,5 @@
 # Ollama på NAIS
 
-En test.
-
 ## Security: CVE Mitigation
 
 This repository includes two Dockerfiles:
